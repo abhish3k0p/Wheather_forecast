@@ -11,20 +11,42 @@
         <h1 style="animation: bounce 2s  infinite;">Weather Forecast</h1>
         <div class="input-container">
             <input type="text" id="location" placeholder="Enter City">
-            <button onclick="getWeather()">Get Weather</button>
+            <button onclick="getWeather('search')">Search</button>
         </div>
         <div id="weather-info">
             <!-- Weather data will be displayed here -->
         </div>
+        <button onclick="getWeather('location')">Get Weather for My Location</button>
     </div>
 
     <script>
-        function getWeather() {
-            const location = document.getElementById('location').value;
-            // Replace 'YOUR_API_KEY' with your actual API key from a weather service provider.
-            const apiKey = 'be5b5719ae2ec7e9b1bedc36450712fb';
-            const apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${location}&appid=${apiKey}`;
-            
+        function getWeather(option) {
+            let apiUrl = '';
+            if (option === 'search') {
+                const location = document.getElementById('location').value;
+                apiUrl = `https://api.openweathermap.org/data/2.5/weather?q=${location}&appid=be5b5719ae2ec7e9b1bedc36450712fb`;
+            } else if (option === 'location') {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        position => {
+                            const latitude = position.coords.latitude;
+                            const longitude = position.coords.longitude;
+                            apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=be5b5719ae2ec7e9b1bedc36450712fb`;
+                            fetchWeather(apiUrl);
+                        },
+                        showError
+                    );
+                } else {
+                    const weatherInfo = document.getElementById('weather-info');
+                    weatherInfo.innerHTML = '<p>Geolocation is not supported by your browser.</p>';
+                }
+                return; // Return to prevent fetching weather again after geolocation
+            }
+
+            fetchWeather(apiUrl);
+        }
+
+        function fetchWeather(apiUrl) {
             fetch(apiUrl)
                 .then(response => response.json())
                 .then(data => {
@@ -33,6 +55,9 @@
                         <h2>Weather in ${data.name}, ${data.sys.country}</h2>
                         <p>Temperature: ${(data.main.temp - 273.15).toFixed(2)}°C</p>
                         <p>Weather: ${data.weather[0].description}</p>
+                        <p>Humidity: ${data.main.humidity}%</p>
+                        <p>Wind Speed: ${data.wind.speed} m/s</p>
+                        <img src="http://openweathermap.org/img/wn/${data.weather[0].icon}.png" alt="Weather Icon">
                     `;
                 })
                 .catch(error => {
@@ -40,6 +65,24 @@
                     const weatherInfo = document.getElementById('weather-info');
                     weatherInfo.innerHTML = '<p>Unable to fetch weather data. Please try again later.</p>';
                 });
+        }
+
+        function showError(error) {
+            const weatherInfo = document.getElementById('weather-info');
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    weatherInfo.innerHTML = '<p>User denied the request for Geolocation.</p>';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    weatherInfo.innerHTML = '<p>Location information is unavailable.</p>';
+                    break;
+                case error.TIMEOUT:
+                    weatherInfo.innerHTML = '<p>The request to get user location timed out.</p>';
+                    break;
+                case error.UNKNOWN_ERROR:
+                    weatherInfo.innerHTML = '<p>An unknown error occurred.</p>';
+                    break;
+            }
         }
     </script>
 </body>
